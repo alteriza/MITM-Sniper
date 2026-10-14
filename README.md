@@ -1,11 +1,4 @@
 # 📄 README.md
-
-<!--
-  MITM Sniper — README
-  Author: Alteriza
-  Contributors (AI assistants): DeepSeek (V2.0+), Gemini (V1.0)
--->
-
 <div align="center">
 
 # 🎯 MITM Sniper
@@ -476,8 +469,8 @@ tshark.log
 | Role | Name |
 |---|---|
 | **Author / Maintainer** | **Alteriza** |
-| **AI Assistant (V2.0+)** | **DeepSeek** — refactor, rich viewer, JSON pipeline, robustness fixes. |
-| **AI Assistant (V1.0)** | **Gemini** — original proof-of-concept script that inspired the current architecture. |
+| **AI Assistant** | **DeepSeek** — refactor, rich viewer, JSON pipeline, robustness fixes. |
+| **AI Assistant** | **Gemini** — original proof-of-concept script that inspired the current architecture. |
 | **Core dependencies** | [bettercap](https://www.bettercap.org/), [Wireshark/tshark](https://www.wireshark.org/) |
 
 Special thanks to the open-source community behind `bettercap`, `tshark`, and the countless ARP spoof tutorials that made this project possible.
@@ -848,8 +841,8 @@ tshark.log
 | Peran | Nama |
 |---|---|
 | **Author / Maintainer** | **Alteriza** |
-| **Asisten AI (V2.0+)** | **DeepSeek** — refactor, viewer kaya, pipeline JSON, fix robustness. |
-| **Asisten AI (V1.0)** | **Gemini** — script proof-of-concept awal yang menginspirasi arsitektur sekarang. |
+| **Asisten AI** | **DeepSeek** — refactor, viewer kaya, pipeline JSON, fix robustness. |
+| **Asisten AI** | **Gemini** — script proof-of-concept awal yang menginspirasi arsitektur sekarang. |
 | **Dependency utama** | [bettercap](https://www.bettercap.org/), [Wireshark/tshark](https://www.wireshark.org/) |
 
 Terima kasih khusus buat komunitas open-source di balik `bettercap`, `tshark`, dan tutorial-tutorial ARP spoof yang bikin proyek ini mungkin.
