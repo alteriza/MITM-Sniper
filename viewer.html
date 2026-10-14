@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MITM Sniper — Capture Viewer</title>
+<style>
+  :root{
+    --bg:#0a0e14;--panel:#141b26;--panel2:#1b2333;--panel3:#232d40;--border:#2a3444;
+    --text:#d4dce8;--muted:#7f8fa6;--accent:#4ea1ff;--green:#3fb950;
+    --red:#f85149;--yellow:#d29922;--purple:#bc8cff;--cyan:#56d4dd;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);display:flex;flex-direction:column;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;}
+  header{background:var(--panel);padding:12px 20px;border-bottom:1px solid var(--border);
+         display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  h1{margin:0;font-size:15px;color:var(--accent);letter-spacing:.3px;}
+  .meta{font-size:11px;color:var(--muted);font-family:'Consolas',monospace;}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;
+         padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--border);}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:8px 12px;}
+  .stat .lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+  .stat .val{font-size:18px;font-weight:600;color:var(--accent);margin-top:2px;
+             font-variant-numeric:tabular-nums;}
+  .tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--border);
+        background:var(--panel);}
+  .tab{padding:9px 14px;cursor:pointer;color:var(--muted);font-size:12px;
+       border-bottom:2px solid transparent;user-select:none;white-space:nowrap;}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--panel2);}
+  .tab:hover{color:var(--text);}
+  .badge{background:var(--panel3);color:var(--muted);padding:1px 6px;border-radius:8px;
+         font-size:10px;margin-left:5px;font-weight:normal;}
+  .tab.active .badge{background:var(--accent);color:#000;}
+  main{flex:1;overflow:auto;position:relative;}
+  .pane{padding:14px 20px 60px;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  input,select{background:var(--panel);border:1px solid var(--border);color:var(--text);
+               padding:6px 10px;border-radius:4px;font-size:12px;font-family:inherit;}
+  input{flex:1;min-width:220px;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  table{width:100%;border-collapse:collapse;font-family:'Consolas',monospace;font-size:12px;}
+  th,td{padding:4px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{position:sticky;top:0;background:var(--panel);cursor:pointer;user-select:none;z-index:5;
+     font-weight:600;}
+  th:hover{background:var(--panel2);}
+  tbody tr{cursor:pointer;}
+  tbody tr:hover{background:var(--panel2);}
+  tbody tr.selected{background:#1f2d44;outline:1px solid var(--accent);}
+  td.info{white-space:normal;word-break:break-word;max-width:600px;color:#a5b1c2;}
+  .proto{padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:600;
+         display:inline-block;min-width:54px;text-align:center;}
+  .p-TCP{background:#1f6feb33;color:#69b1ff;}
+  .p-UDP{background:#3fb95033;color:#5bd670;}
+  .p-HTTP,.p-HTTP2{background:#d2992233;color:#e5b640;}
+  .p-DNS{background:#bc8cff33;color:#cdabff;}
+  .p-TLSv12,.p-TLSv13{background:#f8514933;color:#ff8b82;}
+  .p-ARP{background:#6e768133;color:#b0bcc9;}
+  .p-ICMP,.p-ICMPv6{background:#e3b34133;color:#f0c855;}
+  .p-QUIC{background:#bc8cff33;color:#cdabff;}
+  .p-DHCP{background:#79c0ff33;color:#9bd4ff;}
+  .p-MDNS{background:#56d4dd33;color:#7ce5ec;}
+  .p-default{background:#7f8fa633;color:#b0bcc9;}
+  .empty{text-align:center;padding:40px;color:var(--muted);}
+  .pill{display:inline-block;background:var(--panel2);padding:2px 8px;border-radius:10px;
+        margin:2px;font-size:11px;font-family:'Consolas',monospace;}
+  .list-item{padding:8px 12px;border-bottom:1px solid var(--border);
+             font-family:'Consolas',monospace;font-size:12px;}
+  .list-item:hover{background:var(--panel2);}
+  .list-item b{color:var(--accent);}
+  .detail{position:fixed;top:0;right:0;height:100vh;width:640px;max-width:100%;
+          background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;
+          padding:0;box-shadow:-8px 0 24px rgba(0,0,0,.7);z-index:100;
+          transform:translateX(100%);transition:transform .18s;}
+  .detail.open{transform:translateX(0);}
+  .detail-head{padding:14px 18px;background:var(--panel2);border-bottom:1px solid var(--border);
+               display:flex;justify-content:space-between;align-items:center;
+               position:sticky;top:0;z-index:5;}
+  .detail-head h2{margin:0;font-size:14px;color:var(--accent);}
+  .detail-head button{background:var(--panel);border:1px solid var(--border);color:var(--text);
+                      padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;}
+  .detail-head button:hover{border-color:var(--accent);}
+  .detail-body{padding:14px 18px 40px;}
+  .sec{margin:14px 0 6px;color:var(--muted);font-size:10.5px;text-transform:uppercase;
+       letter-spacing:.7px;border-bottom:1px solid var(--border);padding-bottom:4px;
+       display:flex;justify-content:space-between;align-items:center;}
+  .sec .copy{background:transparent;border:1px solid var(--border);color:var(--muted);
+             font-size:9px;padding:1px 6px;border-radius:3px;cursor:pointer;}
+  .sec .copy:hover{color:var(--accent);border-color:var(--accent);}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:5px 10px;}
+  .kv .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+         align-self:start;padding-top:2px;}
+  .kv .v{word-break:break-all;font-family:'Consolas',monospace;font-size:12px;
+         color:var(--text);}
+  pre.code{background:var(--bg);padding:10px;border-radius:4px;overflow-x:auto;
+           font-size:11px;color:var(--cyan);margin:6px 0;white-space:pre;
+           max-height:400px;overflow-y:auto;font-family:'Consolas',monospace;line-height:1.4;}
+  pre.hexdump{color:#7ce5ec;}
+  pre.text{color:#d4dce8;white-space:pre-wrap;word-break:break-word;}
+  pre.ascii{color:#e5b640;}
+  .ptabs{display:flex;gap:2px;margin:6px 0 0;}
+  .ptab{padding:4px 10px;background:var(--panel2);border:1px solid var(--border);
+        border-bottom:none;border-radius:4px 4px 0 0;cursor:pointer;font-size:11px;
+        color:var(--muted);}
+  .ptab.active{background:var(--bg);color:var(--accent);border-color:var(--accent);}
+  .pcontent{background:var(--bg);border:1px solid var(--border);border-radius:0 4px 4px 4px;
+            padding:10px;max-height:500px;overflow:auto;}
+  .pcontent pre{margin:0;font-size:11px;line-height:1.45;font-family:'Consolas',monospace;}
+  .flag-on{color:var(--green);}
+  .flag-off{color:var(--muted);}
+  .hint{color:var(--muted);font-size:11px;font-style:italic;}
+  .row-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .row-actions button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+                      padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;}
+  .row-actions button:hover{border-color:var(--accent);color:var(--accent);}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 MITM Sniper — Capture Viewer</h1>
+  <div class="meta" id="meta">loading…</div>
+</header>
+<div class="stats" id="stats"></div>
+<div class="tabs">
+  <div class="tab active" data-pane="packets">📦 Packets <span class="badge" id="b-pkts">0</span></div>
+  <div class="tab" data-pane="http">🌐 HTTP <span class="badge" id="b-http">0</span></div>
+  <div class="tab" data-pane="dns">🔎 DNS <span class="badge" id="b-dns">0</span></div>
+  <div class="tab" data-pane="tls">🔒 TLS <span class="badge" id="b-tls">0</span></div>
+  <div class="tab" data-pane="streams">🔀 Streams <span class="badge" id="b-streams">0</span></div>
+</div>
+<main>
+  <div class="pane" id="pane-packets">
+    <div class="controls">
+      <input id="search" placeholder="Search: IP, protocol, info, host, URI, payload text…">
+      <select id="protoFilter"><option value="">All Protocols</option></select>
+      <select id="ipFilter"><option value="">All Hosts</option></select>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th data-k="no">#</th><th data-k="time">Time</th><th data-k="src">Source</th>
+          <th data-k="dst">Destination</th><th data-k="proto">Protocol</th>
+          <th data-k="len">Len</th><th data-k="info">Info</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="pane" id="pane-http" style="display:none"><div id="httpList"></div></div>
+  <div class="pane" id="pane-dns" style="display:none"><div id="dnsList"></div></div>
+  <div class="pane" id="pane-tls" style="display:none"><div id="tlsList"></div></div>
+  <div class="pane" id="pane-streams" style="display:none"><div id="streamsList"></div></div>
+</main>
+
+<div class="detail" id="detail">
+  <div class="detail-head">
+    <h2 id="detail-title">Packet Detail</h2>
+    <button onclick="closeDetail()">✕ Close</button>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<script>
+let DATA=null, PACKETS=[], FILTERED=[];
+const MAX_RENDER=5000;
+let sortK='no', sortAsc=true;
+
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtBytes=b=>{if(!b)return '0 B';if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';if(b<1073741824)return (b/1048576).toFixed(1)+' MB';return (b/1073741824).toFixed(2)+' GB';};
+const protoClass=p=>{if(!p)return 'p-default';const c=p.replace(/[^A-Za-z0-9]/g,'');return 'p-'+c.split('-')[0];};
+const fmtTime=t=>{if(!t)return '';const d=new Date(t*1000);return d.toLocaleTimeString('en-GB',{hour12:false})+'.'+String(d.getMilliseconds()).padStart(3,'0');};
+
+function hexToBytes(hex){
+  if(!hex) return new Uint8Array(0);
+  hex=hex.replace(/[^0-9a-fA-F]/g,'');
+  if(hex.length%2) hex=hex.slice(0,-1);
+  const out=new Uint8Array(hex.length/2);
+  for(let i=0;i<hex.length;i+=2) out[i/2]=parseInt(hex.substr(i,2),16);
+  return out;
+}
+function bytesToText(bytes){
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+  catch(e){return new TextDecoder('latin-1').decode(bytes);}
+}
+function bytesToAscii(bytes){
+  let s='';
+  for(const b of bytes){
+    if(b>=32&&b<127) s+=String.fromCharCode(b);
+    else if(b===9) s+='→'; else if(b===10) s+='⏎\n'; else if(b===13) s+='';
+    else s+='·';
+  }
+  return s;
+}
+function bytesToHexdump(bytes){
+  const lines=[];
+  for(let i=0;i<bytes.length;i+=16){
+    const chunk=bytes.slice(i,i+16);
+    const hexpart=[...chunk].map(b=>b.toString(16).padStart(2,'0')).join(' ').padEnd(47,' ');
+    const asc=[...chunk].map(b=>(b>=32&&b<127)?String.fromCharCode(b):'.').join('');
+    lines.push(i.toString(16).padStart(8,'0')+'  '+hexpart+'  |'+asc+'|');
+  }
+  return lines.join('\n');
+}
+
+fetch('capture.json').then(r=>r.json()).then(d=>{
+  DATA=d; PACKETS=d.packets||[]; FILTERED=PACKETS.slice();
+  const m=d.meta||{};
+  document.getElementById('meta').textContent=
+    `${m.pcap_file||''} · ${m.mode||''} · ${m.interface||''} · ${m.total||0} pkts · ${fmtBytes(m.total_bytes||0)} · ${m.duration_sec||0}s`;
+  renderStats(); renderProtoFilter(); renderIpFilter(); render();
+  renderHttp(); renderDns(); renderTls(); renderStreams();
+  document.getElementById('b-pkts').textContent=PACKETS.length.toLocaleString();
+  document.getElementById('b-http').textContent=(d.http_requests||[]).length;
+  document.getElementById('b-dns').textContent=(d.dns_queries||[]).length;
+  document.getElementById('b-tls').textContent=(d.tls_snis||[]).length;
+  document.getElementById('b-streams').textContent=(d.streams||[]).length;
+}).catch(e=>{
+  document.getElementById('tbody').innerHTML=
+    '<tr><td colspan="7" class="empty">❌ Gagal load capture.json: '+esc(e.message)+'</td></tr>';
+});
+
+function renderStats(){
+  const m=DATA.meta||{};
+  const s=DATA.stats||{};
+  const protos=(s.protocols||[]).length;
+  const ips=new Set();
+  PACKETS.forEach(p=>{if(p.ip?.src)ips.add(p.ip.src);if(p.ip?.dst)ips.add(p.ip.dst);});
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="lbl">Packets</div><div class="val">${(m.total||0).toLocaleString()}</div></div>
+    <div class="stat"><div class="lbl">Bytes</div><div class="val">${fmtBytes(m.total_bytes||0)}</div></div>
+    <div class="stat"><div class="lbl">Duration</div><div class="val">${(m.duration_sec||0).toFixed(2)}s</div></div>
+    <div class="stat"><div class="lbl">Protocols</div><div class="val">${protos}</div></div>
+    <div class="stat"><div class="lbl">Unique IPs</div><div class="val">${ips.size}</div></div>
+    <div class="stat"><div class="lbl">HTTP Req</div><div class="val">${(DATA.http_requests||[]).length}</div></div>
+    <div class="stat"><div class="lbl">DNS Query</div><div class="val">${(DATA.dns_queries||[]).length}</div></div>
+    <div class="stat"><div class="lbl">TLS SNI</div><div class="val">${(DATA.tls_snis||[]).length}</div></div>
+  `;
+}
+
+function renderProtoFilter(){
+  const sel=document.getElementById('protoFilter');
+  (DATA.stats?.protocols||[]).forEach(({proto,count})=>{
+    const o=document.createElement('option'); o.value=proto; o.textContent=`${proto} (${count})`;
+    sel.appendChild(o);
+  });
+}
+function renderIpFilter(){
+  const sel=document.getElementById('ipFilter');
+  const ips=new Set();
+  PACKETS.forEach(p=>{if(p.ip?.src)ips.add(p.ip.src);if(p.ip?.dst)ips.add(p.ip.dst);});
+  [...ips].sort().forEach(ip=>{
+    const o=document.createElement('option'); o.value=ip; o.textContent=ip; sel.appendChild(o);
+  });
+}
+
+function sortPackets(){
+  FILTERED.sort((a,b)=>{
+    let x=a[sortK], y=b[sortK];
+    if(sortK==='src'){x=a.ip?.src||'';y=b.ip?.src||'';}
+    if(sortK==='dst'){x=a.ip?.dst||'';y=b.ip?.dst||'';}
+    if(typeof x==='string') return sortAsc?x.localeCompare(y):y.localeCompare(x);
+    return sortAsc?(x-y):(y-x);
+  });
+}
+
+function render(){
+  const tbody=document.getElementById('tbody');
+  if(!FILTERED.length){tbody.innerHTML='<tr><td colspan="7" class="empty">No packets match filter</td></tr>';return;}
+  const slice=FILTERED.slice(0,MAX_RENDER);
+  tbody.innerHTML=slice.map(p=>`
+    <tr data-no="${p.no}">
+      <td>${p.no}</td><td>${fmtTime(p.time)}</td>
+      <td>${esc(p.ip?.src||'')}</td><td>${esc(p.ip?.dst||'')}</td>
+      <td><span class="proto ${protoClass(p.proto)}">${esc(p.proto)}</span></td>
+      <td>${p.len}</td><td class="info">${esc(p.info)}</td>
+    </tr>`).join('');
+  if(FILTERED.length>MAX_RENDER){
+    tbody.innerHTML+=`<tr><td colspan="7" class="empty">Rendering first ${MAX_RENDER} of ${FILTERED.length.toLocaleString()} — refine filter</td></tr>`;
+  }
+  tbody.querySelectorAll('tr[data-no]').forEach(tr=>{
+    tr.onclick=()=>{
+      tbody.querySelectorAll('tr').forEach(x=>x.classList.remove('selected'));
+      tr.classList.add('selected');
+      showDetail(parseInt(tr.dataset.no,10));
+    };
+  });
+}
+
+function applyFilter(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const proto=document.getElementById('protoFilter').value;
+  const ip=document.getElementById('ipFilter').value;
+  FILTERED=PACKETS.filter(p=>{
+    if(proto && p.proto!==proto) return false;
+    if(ip && p.ip?.src!==ip && p.ip?.dst!==ip) return false;
+    if(q){
+      const hay=[p.ip?.src,p.ip?.dst,p.proto,p.info,p.http?.host,p.http?.uri,
+                 p.dns?.name,p.tls?.sni,p.payload?.text].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  render();
+}
+document.getElementById('search').addEventListener('input',applyFilter);
+document.getElementById('protoFilter').addEventListener('change',applyFilter);
+document.getElementById('ipFilter').addEventListener('change',applyFilter);
+document.querySelectorAll('th').forEach(th=>{
+  th.onclick=()=>{
+    const k=th.dataset.k; if(!k) return;
+    if(sortK===k) sortAsc=!sortAsc; else {sortK=k; sortAsc=true;}
+    sortPackets(); render();
+  };
+});
+
+function showDetail(no){
+  const p=PACKETS.find(x=>x.no===no);
+  if(!p) return;
+  document.getElementById('detail-title').textContent=`Packet #${p.no} — ${p.proto}`;
+  let html='';
+  const kv=(k,v)=>(v!==undefined&&v!==''&&v!==null)?`<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`:'';
+
+  html+=`<div class="sec">Frame</div><div class="kv">`;
+  html+=kv('No',p.no)+kv('Time',fmtTime(p.time))+kv('Epoch',p.time)+kv('Length',p.len+' bytes');
+  if(p.protocols) html+=kv('Protocols',p.protocols);
+  html+=`</div>`;
+
+  html+=`<div class="sec">Ethernet</div><div class="kv">`;
+  html+=kv('Src MAC',p.eth?.src)+kv('Dst MAC',p.eth?.dst);
+  html+=`</div>`;
+
+  html+=`<div class="sec">IP</div><div class="kv">`;
+  html+=kv('Src',p.ip?.src)+kv('Dst',p.ip?.dst)+kv('TTL',p.ip?.ttl)+kv('IP Proto #',p.ip?.proto_num);
+  html+=`</div>`;
+
+  if(p.tcp || p.udp){
+    html+=`<div class="sec">Transport</div><div class="kv">`;
+    if(p.tcp){
+      html+=kv('TCP Src',p.tcp.sport)+kv('TCP Dst',p.tcp.dport);
+      html+=kv('Flags',p.tcp.flags)+kv('Seq',p.tcp.seq)+kv('Ack',p.tcp.ack);
+      html+=kv('Stream',p.tcp.stream)+kv('Payload Len',p.tcp.data_len);
+    }
+    if(p.udp){
+      html+=kv('UDP Src',p.udp.sport)+kv('UDP Dst',p.udp.dport);
+      html+=kv('Length',p.udp.length)+kv('Stream',p.udp.stream);
+    }
+    html+=`</div>`;
+  }
+
+  if(p.http){
+    const h=p.http;
+    html+=`<div class="sec">HTTP</div><div class="kv">`;
+    html+=kv('Method',h.method)+kv('Host',h.host)+kv('URI',h.uri)+kv('Full URI',h.full_uri);
+    html+=kv('Status',h.status_code);
+    html+=kv('User-Agent',h.user_agent)+kv('Referer',h.referer)+kv('Cookie',h.cookie);
+    html+=kv('Content-Type',h.content_type)+kv('Content-Length',h.content_length);
+    html+=`</div>`;
+    if(h.request_lines){
+      html+=`<div class="sec">Request Headers <button class="copy" onclick="copySec('req-headers')">Copy</button></div>`;
+      html+=`<pre class="code" id="req-headers">${esc(h.request_lines.join('\n'))}</pre>`;
+    }
+    if(h.response_lines){
+      html+=`<div class="sec">Response Headers <button class="copy" onclick="copySec('res-headers')">Copy</button></div>`;
+      html+=`<pre class="code" id="res-headers">${esc(h.response_lines.join('\n'))}</pre>`;
+    }
+  }
+
+  if(p.dns){
+    const d=p.dns;
+    html+=`<div class="sec">DNS</div><div class="kv">`;
+    html+=kv('Query',d.name);
+    html+=kv('Type',d.is_response?'Response':'Query');
+    if(d.a) html+=kv('A',d.a.join(', '));
+    if(d.aaaa) html+=kv('AAAA',d.aaaa.join(', '));
+    if(d.cname) html+=kv('CNAME',d.cname.join(', '));
+    html+=`</div>`;
+  }
+
+  if(p.tls){
+    html+=`<div class="sec">TLS</div><div class="kv">`;
+    html+=kv('SNI',p.tls.sni)+kv('Record Version',p.tls.record_version)+kv('Handshake Type',p.tls.handshake_type);
+    html+=`</div>`;
+  }
+
+  if(p.payload){
+    const pl=p.payload;
+    const bytes=hexToBytes(pl.hex||'');
+    const text=pl.text||bytesToText(bytes);
+    const ascii=bytesToAscii(bytes);
+    const hexd=bytesToHexdump(bytes);
+    const ratioPct=Math.round((pl.printable_ratio||0)*100);
+    const enc=pl.encoding||'?';
+
+    html+=`<div class="sec">Payload — ${pl.size} bytes · encoding: ${esc(enc)} · printable: ${ratioPct}%</div>`;
+    html+=`<div class="ptabs">
+      <div class="ptab active" data-t="text">Text</div>
+      <div class="ptab" data-t="ascii">ASCII</div>
+      <div class="ptab" data-t="hexdump">Hexdump</div>
+      <div class="ptab" data-t="hex">Raw Hex</div>
+    </div>`;
+    html+=`<div class="pcontent">
+      <pre class="text" id="pv-text">${esc(text)}</pre>
+      <pre class="ascii" id="pv-ascii" style="display:none">${esc(ascii)}</pre>
+      <pre class="hexdump" id="pv-hexdump" style="display:none">${esc(hexd)}</pre>
+      <pre class="hexdump" id="pv-hex" style="display:none;word-break:break-all;white-space:pre-wrap;">${esc(pl.hex||'')}</pre>
+    </div>`;
+    html+=`<div class="row-actions">
+      <button onclick="copyPayload('text')">📋 Copy Text</button>
+      <button onclick="copyPayload('ascii')">📋 Copy ASCII</button>
+      <button onclick="copyPayload('hex')">📋 Copy Hex</button>
+      <button onclick="downloadPayload()">⬇ Download Raw</button>
+    </div>`;
+  } else {
+    html+=`<div class="sec">Payload</div><div class="hint">Tidak ada payload pada paket ini (biasanya control packet: ACK/SYN/etc).</div>`;
+  }
+
+  html+=`<div class="sec">Raw JSON <button class="copy" onclick="copySec('rawjson')">Copy</button></div>`;
+  html+=`<pre class="code" id="rawjson" style="max-height:220px;">${esc(JSON.stringify(p,null,2))}</pre>`;
+
+  document.getElementById('detailBody').innerHTML=html;
+  document.getElementById('detail').classList.add('open');
+
+  document.querySelectorAll('.ptab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.ptab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      ['text','ascii','hexdump','hex'].forEach(k=>{
+        const el=document.getElementById('pv-'+k);
+        if(el) el.style.display=(k===t.dataset.t)?'block':'none';
+      });
+    };
+  });
+
+  window._currentPayload=p.payload;
+}
+
+function closeDetail(){document.getElementById('detail').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
+
+function copySec(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{});
+}
+function copyPayload(kind){
+  const pl=window._currentPayload; if(!pl) return;
+  const bytes=hexToBytes(pl.hex||'');
+  let txt='';
+  if(kind==='text') txt=pl.text||bytesToText(bytes);
+  else if(kind==='ascii') txt=bytesToAscii(bytes);
+  else if(kind==='hex') txt=pl.hex||'';
+  navigator.clipboard.writeText(txt);
+}
+function downloadPayload(){
+  const pl=window._currentPayload; if(!pl) return;
+  const bytes=hexToBytes(pl.hex||'');
+  const blob=new Blob([bytes],{type:'application/octet-stream'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='payload_'+Date.now()+'.bin';
+  a.click();
+}
+
+function renderHttp(){
+  const arr=DATA.http_requests||[];
+  const el=document.getElementById('httpList');
+  if(!arr.length){el.className='empty';el.textContent='No HTTP requests captured.';return;}
+  el.className='';
+  el.innerHTML=arr.map(r=>`
+    <div class="list-item">
+      <b>${esc(r.method)}</b> <span style="color:var(--yellow)">${esc(r.host)}</span><span style="color:var(--cyan)">${esc(r.uri)}</span>
+      <span style="color:var(--muted)"> ← ${esc(r.src)} → ${esc(r.dst)}</span>
+      ${r.user_agent?`<div style="color:var(--muted);font-size:11px;margin-top:3px">UA: ${esc(r.user_agent)}</div>`:''}
+      ${r.referer?`<div style="color:var(--muted);font-size:11px">Referer: ${esc(r.referer)}</div>`:''}
+      ${r.content_type?`<div style="color:var(--muted);font-size:11px">CT: ${esc(r.content_type)}</div>`:''}
+    </div>`).join('');
+}
+function renderDns(){
+  const arr=DATA.dns_queries||[];
+  const el=document.getElementById('dnsList');
+  if(!arr.length){el.className='empty';el.textContent='No DNS queries captured.';return;}
+  el.className='';
+  el.innerHTML=arr.map(q=>`
+    <div class="list-item">
+      <b>${esc(q.name)}</b> <span style="color:var(--muted)">from ${esc(q.src)}</span>
+    </div>`).join('');
+}
+function renderTls(){
+  const arr=DATA.tls_snis||[];
+  const el=document.getElementById('tlsList');
+  if(!arr.length){el.className='empty';el.textContent='No TLS SNI captured.';return;}
+  el.className='';
+  el.innerHTML=arr.map(s=>`<span class="pill">${esc(s)}</span>`).join(' ');
+}
+function renderStreams(){
+  const arr=DATA.streams||[];
+  const el=document.getElementById('streamsList');
+  if(!arr.length){el.className='empty';el.textContent='No streams.';return;}
+  el.className='';
+  el.innerHTML=`<table style="margin-top:6px;">
+    <thead><tr>
+      <th>Stream</th><th>Packets</th><th>Bytes</th><th>Src</th><th>Dst</th><th>Ports</th><th>Protocols</th>
+    </tr></thead>
+    <tbody>${arr.map(s=>`<tr>
+      <td>${esc(s.id)}</td><td>${s.packets}</td><td>${fmtBytes(s.bytes)}</td>
+      <td>${esc(s.srcs.join(', '))}</td><td>${esc(s.dsts.join(', '))}</td>
+      <td>${s.sport||''}→${s.dport||''}</td>
+      <td>${esc(s.protos.join(', '))}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.pane').forEach(p=>p.style.display='none');
+    document.getElementById('pane-'+t.dataset.pane).style.display='block';
+  };
+});
+</script>
+</body>
+</html>
