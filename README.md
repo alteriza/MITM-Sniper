@@ -1,6 +1,5 @@
 # 📄 README.md
 
-```markdown
 <!--
   MITM Sniper — README
   Author: Alteriza
@@ -13,11 +12,11 @@
 
 **Interactive ARP Spoof + Full-Detail Packet Capture + Rich Web Viewer**
 
-[![Platform](https://img.shields.io/badge/platform-Linux-blue?style=flat-square)](#-requirements)
-[![Tested On](https://img.shields.io/badge/tested%20on-Arch%20Linux-1793d1?style=flat-square&logo=arch-linux)](#-requirements)
+[![Platform](https://img.shields.io/badge/platform-Linux-blue?style=flat-square)](#requirements)
+[![Tested On](https://img.shields.io/badge/tested%20on-Arch%20Linux-1793d1?style=flat-square&logo=arch-linux)](#requirements)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?style=flat-square&logo=gnu-bash)](#)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?style=flat-square&logo=python)](#)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](#-license)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](#license)
 
 *Built for network forensics, security research, and CTF/lab environments.*
 
@@ -91,23 +90,25 @@ The goal: give security researchers, students, and network engineers a **one-com
 
 ```
 ┌────────────────┐    ┌────────────────┐    ┌──────────────────┐
-│  mitm.sh       │───▶│  bettercap     │───▶│  ARP spoof       │
-│  (orchestrator)│    │  (xterm, UI)   │    │  traffic via us  │
+│   mitm.sh      │───▶│   bettercap    │───▶│   ARP spoof      │
+│ (orchestrator) │    │  (xterm, UI)   │    │ traffic via us   │
 │                │    └────────────────┘    └──────────────────┘
 │                │
-│                │───▶│  tshark        │───▶│  capture.pcap    │
+│                │───▶┌────────────────┐    ┌──────────────────┐
+│                │    │     tshark     │───▶│  capture.pcap    │
 │                │    └────────────────┘    └────────┬─────────┘
 │                │                                   │
-│                │───▶│  pcap2json.py  │◀──────────────┘
+│                │───▶┌────────────────┐◀──────────────┘
+│                │    │  pcap2json.py  │
 │                │    └────────┬───────┘
 │                │             ▼
 │                │    ┌────────────────┐
 │                │    │  capture.json  │
 │                │    └────────┬───────┘
 │                │             ▼
-│                │    ┌────────────────┐    ┌──────────────────┐
-│                │───▶│  viewer.html   │───▶│  python http.srv │
-└────────────────┘    └────────────────┘    │  localhost:4040  │
+│                │───▶┌────────────────┐    ┌──────────────────┐
+└────────────────┘    │  viewer.html   │───▶│ python http.srv  │
+                      └────────────────┘    │ localhost:4040   │
                                             └──────────────────┘
 ```
 
@@ -127,7 +128,7 @@ The goal: give security researchers, students, and network engineers a **one-com
 
 - ✅ **Arch Linux** (rolling, kernel 6.x, tested with `bettercap 2.32+`, `tshark 4.x`)
 - ⚠️ **Other distros (Debian/Ubuntu/Fedora/Kali/Parrot)**: should work but **not tested**. Package names differ — see the table below.
-- ❌ **macOS / Windows**: **NOT tested**, likely broken due to different interface naming and `xterm` dependency.
+- ❌ **macOS / Windows**: **NOT tested**, likely broken due to different interface naming and the `xterm` dependency.
 
 > **Disclaimer:** The author only validates this tool on Arch Linux. If you run it on another distro, you accept the risk — please open an issue with your distro + version if you find a bug.
 
@@ -311,15 +312,15 @@ Click any packet row → the right drawer slides in with:
     "generated": "2026-01-14 10:31:22"
   },
   "stats": {
-    "protocols": [ {"proto": "TLSv1.2", "count": 421}, ... ],
-    "top_src":   [ {"ip": "192.168.1.5", "count": 810}, ... ],
-    "top_dst":   [ {"ip": "1.1.1.1", "count": 320}, ... ]
+    "protocols": [ {"proto": "TLSv1.2", "count": 421} ],
+    "top_src":   [ {"ip": "192.168.1.5", "count": 810} ],
+    "top_dst":   [ {"ip": "1.1.1.1", "count": 320} ]
   },
   "http_requests":  [ {"no": 42, "src": "...", "dst": "...", "method": "GET",
                        "host": "example.com", "uri": "/", "user_agent": "..."} ],
   "http_responses": [ {"no": 43, "src": "...", "dst": "...", "status": 200} ],
   "dns_queries":    [ {"no": 12, "src": "192.168.1.5", "name": "example.com"} ],
-  "tls_snis":       [ "example.com", "cloudflare.com", "..." ],
+  "tls_snis":       [ "example.com", "cloudflare.com" ],
   "streams": [
     { "id": "TCP 0", "packets": 84, "bytes": 128743,
       "srcs": ["192.168.1.5"], "dsts": ["1.1.1.1"],
@@ -331,7 +332,7 @@ Click any packet row → the right drawer slides in with:
       "time": 1791973584.7537,
       "len": 66,
       "protocols": "eth:ethertype:ip:tcp",
-      "eth": { "src": "aa:bb:..", "dst": "cc:dd:.." },
+      "eth": { "src": "aa:bb:cc:dd:ee:ff", "dst": "11:22:33:44:55:66" },
       "ip":  { "src": "192.168.1.5", "dst": "8.8.8.8",
                "proto_num": 6, "ttl": 64 },
       "proto": "TCP",
@@ -342,7 +343,7 @@ Click any packet row → the right drawer slides in with:
                "seq": "1", "ack": "1", "stream": 0, "data_len": 0 },
       "http": { "method": "GET", "host": "example.com", "uri": "/",
                 "user_agent": "Mozilla/5.0 …",
-                "request_lines": ["GET / HTTP/1.1", "Host: example.com", …] },
+                "request_lines": ["GET / HTTP/1.1", "Host: example.com"] },
       "dns": { "name": "example.com", "a": ["93.184.216.34"],
                "is_response": false },
       "tls": { "sni": "example.com", "record_version": "0x0303",
@@ -517,23 +518,25 @@ Tujuan: memberi pentester, mahasiswa, dan network engineer cara **satu perintah*
 
 ```
 ┌────────────────┐    ┌────────────────┐    ┌──────────────────┐
-│  mitm.sh       │───▶│  bettercap     │───▶│  ARP spoof       │
-│  (orchestrator)│    │  (xterm, UI)   │    │  traffic lewat    │
+│   mitm.sh      │───▶│   bettercap    │───▶│   ARP spoof      │
+│ (orchestrator) │    │  (xterm, UI)   │    │ traffic lewat    │
 │                │    └────────────────┘    └──────────────────┘
 │                │
-│                │───▶│  tshark        │───▶│  capture.pcap    │
+│                │───▶┌────────────────┐    ┌──────────────────┐
+│                │    │     tshark     │───▶│  capture.pcap    │
 │                │    └────────────────┘    └────────┬─────────┘
 │                │                                   │
-│                │───▶│  pcap2json.py  │◀──────────────┘
+│                │───▶┌────────────────┐◀──────────────┘
+│                │    │  pcap2json.py  │
 │                │    └────────┬───────┘
 │                │             ▼
 │                │    ┌────────────────┐
 │                │    │  capture.json  │
 │                │    └────────┬───────┘
 │                │             ▼
-│                │    ┌────────────────┐    ┌──────────────────┐
-│                │───▶│  viewer.html   │───▶│  python http.srv │
-└────────────────┘    └────────────────┘    │  localhost:4040  │
+│                │───▶┌────────────────┐    ┌──────────────────┐
+└────────────────┘    │  viewer.html   │───▶│ python http.srv  │
+                      └────────────────┘    │ localhost:4040   │
                                             └──────────────────┘
 ```
 
@@ -853,6 +856,9 @@ Terima kasih khusus buat komunitas open-source di balik `bettercap`, `tshark`, d
 
 ---
 
+# 📜 License
+
+MIT License — see [LICENSE](LICENSE) for the full text.
 
 <div align="center">
 
@@ -861,4 +867,5 @@ Terima kasih khusus buat komunitas open-source di balik `bettercap`, `tshark`, d
 Made with 🖤 by **Alteriza** · Powered by **DeepSeek** & **Gemini**
 
 </div>
-```
+
+---
